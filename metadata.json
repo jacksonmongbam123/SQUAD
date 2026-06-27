@@ -1,0 +1,6 @@
+{
+  "name": "SQUAD Portal",
+  "description": "A comprehensive user and access management portal for the SQUAD platform, featuring role-based classification and granular access level controls.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
