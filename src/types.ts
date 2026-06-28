@@ -4,6 +4,7 @@ export type AccessLevelID = 'level_1' | 'level_2' | 'level_3' | 'level_4' | 'lev
 
 export interface SquadUser {
   id: string;
+  dbId?: string; // real MongoDB _id returned from backend after registration
   user_type_id: string; // dropdown value mapped from: Student, Teacher/Instructor, Administrator, Parent/Guardian
   nic: string;
   password?: string;

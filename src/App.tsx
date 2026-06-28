@@ -754,7 +754,14 @@ export default function App() {
         `[${logTime()}] Server Response: ${typeof responseData === 'object' ? JSON.stringify(responseData, null, 2) : responseData}`
       ]);
 
-      setUsers(prevUsers => [newRecord, ...prevUsers]);
+      // Capture the real MongoDB _id from the response so delete can use it later
+      const dbId = responseData?.createdParent?._id
+        || responseData?.createdStudent?._id
+        || responseData?.createdTeacher?._id
+        || responseData?._id
+        || undefined;
+
+      setUsers(prevUsers => [{ ...newRecord, dbId }, ...prevUsers]);
       setSuccessToast("successful");
       setTimeout(() => setSuccessToast(null), 5000);
 
@@ -792,10 +799,63 @@ export default function App() {
   };
 
   // Delete User Record
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm('Delete this user record from SQUAD Portal?')) {
-      setUsers(users.filter(u => u.id !== id));
-      if (selectedUserJson === id) setSelectedUserJson(null);
+      const user = users.find(u => u.id === id);
+      if (!user) return;
+
+      const dbId = user.dbId;
+      if (!dbId) {
+        alert('Cannot delete: this record has no database ID (it may have been created before this fix). Please remove it manually from the database.');
+        // Still remove from local UI since it was never in the DB anyway
+        setUsers(users.filter(u => u.id !== id));
+        if (selectedUserJson === id) setSelectedUserJson(null);
+        return;
+      }
+
+      // Determine correct endpoint based on user_type_id
+      const typeId = (user.user_type_id || '').toLowerCase();
+      let endpoint = '';
+      let method = 'DELETE';
+
+      if (typeId === 'student') {
+        endpoint = `https://abms-lkw9.onrender.com/m/student/delete/${dbId}`;
+      } else if (typeId === 'instructor' || typeId === 'teacher') {
+        endpoint = `https://abms-lkw9.onrender.com/m/teacher/delete/${dbId}`;
+      } else if (typeId === 'parent' || typeId === 'parents') {
+        endpoint = `https://abms-lkw9.onrender.com/m/parent/delete/${dbId}`;
+        method = 'POST';
+      } else if (typeId === 'administrator' || typeId === 'admin') {
+        // Admins use the student delete or a generic route — use parent POST as fallback
+        endpoint = `https://abms-lkw9.onrender.com/m/admin/delete/${dbId}`;
+      }
+
+      if (!endpoint) {
+        alert(`Unknown user type "${user.user_type_id}" — cannot determine delete endpoint.`);
+        return;
+      }
+
+      try {
+        const response = await fetch(endpoint, {
+          method,
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          const errText = await response.text();
+          alert(`Failed to delete from database (${response.status}): ${errText}. Record NOT removed.`);
+          return;
+        }
+
+        // Only remove from UI after confirmed DB deletion
+        setUsers(users.filter(u => u.id !== id));
+        if (selectedUserJson === id) setSelectedUserJson(null);
+      } catch (err: any) {
+        alert(`Network error while deleting: ${err.message}. Record NOT removed.`);
+      }
     }
   };
 
