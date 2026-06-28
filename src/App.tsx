@@ -1112,20 +1112,6 @@ export default function App() {
             )}
           </button>
 
-          <button
-            onClick={() => setActiveTab('gitsync')}
-            className={`w-full flex items-center rounded-lg text-xs font-semibold transition-all ${
-              isSidebarCollapsed ? 'justify-center p-2.5' : 'space-x-3 px-3 py-2'
-            } ${
-              activeTab === 'gitsync'
-                ? 'bg-indigo-50 text-indigo-700 shadow-sm border border-indigo-100/50'
-                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-transparent'
-            }`}
-            title={isSidebarCollapsed ? "Commit to GitHub" : ""}
-          >
-            <GitCommit className="h-4 w-4 shrink-0" />
-            {!isSidebarCollapsed && <span>Commit to GitHub</span>}
-          </button>
 
           <button
             onClick={() => setActiveTab('configure')}
