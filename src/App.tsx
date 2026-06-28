@@ -171,6 +171,52 @@ export default function App() {
   const [pushLogs, setPushLogs] = useState<string[]>([]);
   const [pushSuccess, setPushSuccess] = useState(false);
 
+  // ABMS API token — stored from login, used for authenticated delete operations
+  const [abmsToken, setAbmsToken] = useState<string>(() => localStorage.getItem('squad_abms_token') || '');
+  const [abmsUsername, setAbmsUsername] = useState('');
+  const [abmsPassword, setAbmsPassword] = useState('');
+  const [abmsLoginError, setAbmsLoginError] = useState('');
+  const [abmsLoginLoading, setAbmsLoginLoading] = useState(false);
+  const [showAbmsLogin, setShowAbmsLogin] = useState(false);
+  // Store pending delete id while waiting for login
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+
+  useEffect(() => {
+    localStorage.setItem('squad_abms_token', abmsToken);
+  }, [abmsToken]);
+
+  const handleAbmsLogin = async () => {
+    if (!abmsUsername || !abmsPassword) return;
+    setAbmsLoginLoading(true);
+    setAbmsLoginError('');
+    try {
+      const res = await fetch('https://abms-lkw9.onrender.com/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ username: abmsUsername, password: abmsPassword })
+      });
+      const data = await res.json();
+      if (res.ok && data.token) {
+        setAbmsToken(data.token);
+        setShowAbmsLogin(false);
+        setAbmsUsername('');
+        setAbmsPassword('');
+        // Retry the pending delete if any
+        if (pendingDeleteId) {
+          const pid = pendingDeleteId;
+          setPendingDeleteId(null);
+          setTimeout(() => handleDelete(pid, data.token), 100);
+        }
+      } else {
+        setAbmsLoginError(data.message || 'Login failed');
+      }
+    } catch (err: any) {
+      setAbmsLoginError(err.message || 'Network error');
+    } finally {
+      setAbmsLoginLoading(false);
+    }
+  };
+
   useEffect(() => {
     localStorage.setItem('squad_git_token', gitToken);
   }, [gitToken]);
@@ -799,7 +845,7 @@ export default function App() {
   };
 
   // Delete User Record
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: string, tokenOverride?: string) => {
     if (confirm('Delete this user record from SQUAD Portal?')) {
       const user = users.find(u => u.id === id);
       if (!user) return;
@@ -807,9 +853,16 @@ export default function App() {
       const dbId = user.dbId;
       if (!dbId) {
         alert('Cannot delete: this record has no database ID (it may have been created before this fix). Please remove it manually from the database.');
-        // Still remove from local UI since it was never in the DB anyway
         setUsers(users.filter(u => u.id !== id));
         if (selectedUserJson === id) setSelectedUserJson(null);
+        return;
+      }
+
+      // Use provided token, stored abmsToken, or prompt login
+      const token = tokenOverride || abmsToken;
+      if (!token) {
+        setPendingDeleteId(id);
+        setShowAbmsLogin(true);
         return;
       }
 
@@ -840,9 +893,19 @@ export default function App() {
           method,
           headers: {
             'Content-Type': 'application/json',
-            'Accept': 'application/json'
+            'Accept': 'application/json',
+            'Authorization': `Bearer ${token}`
           }
         });
+
+        if (response.status === 401 || response.status === 403) {
+          // Token expired or invalid — clear it and prompt re-login
+          setAbmsToken('');
+          localStorage.removeItem('squad_abms_token');
+          setPendingDeleteId(id);
+          setShowAbmsLogin(true);
+          return;
+        }
 
         if (!response.ok) {
           const errText = await response.text();
@@ -921,6 +984,59 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 flex font-sans antialiased">
+
+      {/* ABMS Login Modal — shown when delete requires authentication */}
+      {showAbmsLogin && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl p-6 w-full max-w-sm space-y-4">
+            <div className="space-y-1">
+              <h3 className="text-sm font-bold text-slate-900">ABMS Admin Login Required</h3>
+              <p className="text-xs text-slate-500">Enter your admin credentials to authenticate delete operations.</p>
+            </div>
+            {abmsLoginError && (
+              <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs text-red-700 font-medium">{abmsLoginError}</div>
+            )}
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Username / NIC / Reg No</label>
+                <input
+                  type="text"
+                  value={abmsUsername}
+                  onChange={e => setAbmsUsername(e.target.value)}
+                  placeholder="Enter admin username"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Password</label>
+                <input
+                  type="password"
+                  value={abmsPassword}
+                  onChange={e => setAbmsPassword(e.target.value)}
+                  placeholder="Enter password"
+                  onKeyDown={e => e.key === 'Enter' && handleAbmsLogin()}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={() => { setShowAbmsLogin(false); setPendingDeleteId(null); setAbmsLoginError(''); }}
+                className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAbmsLogin}
+                disabled={abmsLoginLoading || !abmsUsername || !abmsPassword}
+                className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+              >
+                {abmsLoginLoading ? 'Logging in...' : 'Login & Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* 1. LEFT NAVIGATION BAR */}
       <aside className={`bg-white border-r border-slate-200 flex flex-col shrink-0 transition-all duration-300 ease-in-out ${isSidebarCollapsed ? 'w-16' : 'w-64'}`}>
