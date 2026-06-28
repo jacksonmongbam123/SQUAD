@@ -826,8 +826,8 @@ export default function App() {
         endpoint = `https://abms-lkw9.onrender.com/m/parent/delete/${dbId}`;
         method = 'POST';
       } else if (typeId === 'administrator' || typeId === 'admin') {
-        // Admins use the student delete or a generic route — use parent POST as fallback
         endpoint = `https://abms-lkw9.onrender.com/m/admin/delete/${dbId}`;
+        method = 'POST';
       }
 
       if (!endpoint) {
