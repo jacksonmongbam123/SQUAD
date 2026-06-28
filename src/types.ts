@@ -1,6 +1,6 @@
 export type UserTypeID = 'student' | 'instructor' | 'administrator' | 'parent';
 
-export type AccessLevelID = 'level_1' | 'level_2' | 'level_3' | 'level_4' | 'level_5';
+export type AccessLevelID = 1 | 2 | 3 | 4 | 5 | 6;
 
 export interface SquadUser {
   id: string;
@@ -17,5 +17,5 @@ export interface SquadUser {
   sex: string; // male, female, other
   dob: string;
   phone: string;
-  access_level_id: string; // dropdown value mapped from: Level 1, Level 2, Level 3, Level 4, Level 5
+  access_level_id: number; // dropdown value mapped from: Level 1, Level 2, Level 3, Level 4, Level 5
 }

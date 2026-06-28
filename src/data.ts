@@ -8,9 +8,12 @@ export const USER_TYPES = [
 ];
 
 export const ACCESS_LEVELS = [
-  { id: 'level_4', label: 'Level 4' },
-  { id: 'level_5', label: 'Level 5' },
-  { id: 'level_6', label: 'Level 6' }
+  { id: 1, label: 'Level 1' },
+  { id: 2, label: 'Level 2' },
+  { id: 3, label: 'Level 3' },
+  { id: 4, label: 'Level 4' },
+  { id: 5, label: 'Level 5' },
+  { id: 6, label: 'Level 6' }
 ];
 
 export const TITLES = ['Mr', 'Mrs', 'Ms', 'Dr', 'Rev'];
@@ -36,7 +39,7 @@ export const INITIAL_USERS: SquadUser[] = [
     sex: 'male',
     dob: '1998-05-04',
     phone: '8837092370',
-    access_level_id: 'level_4'
+    access_level_id: 4
   },
   {
     id: 'squad_u2',
@@ -52,7 +55,7 @@ export const INITIAL_USERS: SquadUser[] = [
     sex: 'female',
     dob: '2001-11-20',
     phone: '7730948512',
-    access_level_id: 'level_2'
+    access_level_id: 2
   },
   {
     id: 'squad_u3',
@@ -68,6 +71,6 @@ export const INITIAL_USERS: SquadUser[] = [
     sex: 'male',
     dob: '1984-03-12',
     phone: '9920138402',
-    access_level_id: 'level_5'
+    access_level_id: 5
   }
 ];

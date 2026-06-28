@@ -51,8 +51,8 @@ export default function App() {
     return saved ? JSON.parse(saved) : USER_TYPES;
   });
 
-  const [accessLevelsList, setAccessLevelsList] = useState<{ id: string, label: string }[]>(() => {
-    // Force reset to new access levels (Level 4, 5, 6 only)
+  const [accessLevelsList, setAccessLevelsList] = useState<{ id: number, label: string }[]>(() => {
+    // Force reset to new access levels (Level 1-6)
     localStorage.removeItem('squad_access_levels');
     return ACCESS_LEVELS;
   });
@@ -155,7 +155,7 @@ export default function App() {
   const [sex, setSex] = useState<string>('male');
   const [dob, setDob] = useState<string>('');
   const [phone, setPhone] = useState<string>('');
-  const [accessLevelId, setAccessLevelId] = useState<string>('level_4');
+  const [accessLevelId, setAccessLevelId] = useState<number>(4);
 
   // Auxiliary UI States
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
@@ -278,7 +278,11 @@ export default function App() {
   const handleAddAccessLevel = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newAccessLevelId.trim() || !newAccessLevelLabel.trim()) return;
-    const cleanId = newAccessLevelId.trim().toLowerCase().replace(/\s+/g, '_');
+    const cleanId = Number(newAccessLevelId.trim());
+    if (isNaN(cleanId) || cleanId < 1 || cleanId > 6) {
+      alert('Access Level ID must be a number between 1 and 6');
+      return;
+    }
     if (accessLevelsList.some(al => al.id === cleanId)) {
       alert('Access Level ID already exists');
       return;
@@ -1258,7 +1262,7 @@ export default function App() {
                             <select
                               id="access_level_id"
                               value={accessLevelId}
-                              onChange={e => setAccessLevelId(e.target.value)}
+                              onChange={e => setAccessLevelId(Number(e.target.value))}
                               className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-3 pr-10 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all appearance-none"
                             >
                               {accessLevelsList.map(al => (
@@ -1988,7 +1992,7 @@ export default function App() {
                             <input
                               type="text"
                               required
-                              placeholder="ID (e.g. level_10)"
+                              placeholder="ID (e.g. 1-6)"
                               value={newAccessLevelId}
                               onChange={e => setNewAccessLevelId(e.target.value)}
                               className="w-1/2 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500"
