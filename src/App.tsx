@@ -52,8 +52,9 @@ export default function App() {
   });
 
   const [accessLevelsList, setAccessLevelsList] = useState<{ id: string, label: string }[]>(() => {
-    const saved = localStorage.getItem('squad_access_levels');
-    return saved ? JSON.parse(saved) : ACCESS_LEVELS;
+    // Force reset to new access levels (Level 4, 5, 6 only)
+    localStorage.removeItem('squad_access_levels');
+    return ACCESS_LEVELS;
   });
 
   const [titlesList, setTitlesList] = useState<string[]>(() => {
@@ -154,7 +155,7 @@ export default function App() {
   const [sex, setSex] = useState<string>('male');
   const [dob, setDob] = useState<string>('');
   const [phone, setPhone] = useState<string>('');
-  const [accessLevelId, setAccessLevelId] = useState<string>('level_2');
+  const [accessLevelId, setAccessLevelId] = useState<string>('level_4');
 
   // Auxiliary UI States
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});

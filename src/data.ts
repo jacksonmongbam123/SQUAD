@@ -8,11 +8,9 @@ export const USER_TYPES = [
 ];
 
 export const ACCESS_LEVELS = [
-  { id: 'level_1', label: 'Level 1' },
-  { id: 'level_2', label: 'Level 2' },
-  { id: 'level_3', label: 'Level 3' },
   { id: 'level_4', label: 'Level 4' },
-  { id: 'level_5', label: 'Level 5' }
+  { id: 'level_5', label: 'Level 5' },
+  { id: 'level_6', label: 'Level 6' }
 ];
 
 export const TITLES = ['Mr', 'Mrs', 'Ms', 'Dr', 'Rev'];
