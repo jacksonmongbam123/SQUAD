@@ -18,4 +18,5 @@ export interface SquadUser {
   dob: string;
   phone: string;
   access_level_id: number; // dropdown value mapped from: Level 1, Level 2, Level 3, Level 4, Level 5
+  organization_id?: string; // optional mapped institution ID
 }

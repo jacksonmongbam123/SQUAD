@@ -156,6 +156,9 @@ export default function App() {
   const [dob, setDob] = useState<string>('');
   const [phone, setPhone] = useState<string>('');
   const [accessLevelId, setAccessLevelId] = useState<number>(4);
+  const [organizationId, setOrganizationId] = useState<string>('');
+  const [remoteOrganizations, setRemoteOrganizations] = useState<{ _id: string, name: string }[]>([]);
+  const [orgsLoading, setOrgsLoading] = useState<boolean>(false);
 
   // Auxiliary UI States
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
@@ -221,6 +224,25 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('squad_git_token', gitToken);
   }, [gitToken]);
+
+  // Fetch organizations from ABMS backend on mount
+  useEffect(() => {
+    const fetchOrgs = async () => {
+      setOrgsLoading(true);
+      try {
+        const res = await fetch('https://abms-lkw9.onrender.com/df/institute/all');
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data)) setRemoteOrganizations(data);
+        }
+      } catch (err) {
+        console.warn('Could not fetch organizations from backend:', err);
+      } finally {
+        setOrgsLoading(false);
+      }
+    };
+    fetchOrgs();
+  }, []);
 
   // States for adding new items in the Configure panel
   const [newUserTypeId, setNewUserTypeId] = useState('');
@@ -731,7 +753,8 @@ export default function App() {
       sex: sex,
       dob: dob,
       phone: phone.trim(),
-      access_level_id: accessLevelId
+      access_level_id: accessLevelId,
+      organization_id: organizationId || undefined
     };
 
     setIsPostingRegister(true);
@@ -754,8 +777,9 @@ export default function App() {
         sex: newRecord.sex,
         dob: newRecord.dob,
         phone: newRecord.phone,
-        access_level_id: newRecord.access_level_id
-      }, null, 2)}`
+        access_level_id: newRecord.access_level_id,
+        organization_id: newRecord.organization_id || null
+      }, null, 2)}\`
     ]);
 
     try {
@@ -778,7 +802,8 @@ export default function App() {
           sex: newRecord.sex,
           dob: newRecord.dob,
           phone: newRecord.phone,
-          access_level_id: newRecord.access_level_id
+          access_level_id: newRecord.access_level_id,
+          organization_id: newRecord.organization_id || undefined
         })
       });
 
@@ -826,6 +851,7 @@ export default function App() {
       setLastName('');
       setDob('');
       setPhone('');
+      setOrganizationId('');
       setFormErrors({});
 
       // Jump to directory tab to view the payload
@@ -1274,6 +1300,36 @@ export default function App() {
                             </div>
                           </div>
                         </div>
+                      </div>
+                    </div>
+
+
+                      {/* Institution / Organization mapping */}
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
+                          <span className="flex items-center gap-1.5"><Building className="h-3.5 w-3.5 text-indigo-500" /> Institution (organization_id)</span>
+                          <span className="text-[10px] font-mono text-slate-400">{orgsLoading ? 'Loading...' : `${remoteOrganizations.length} available`}</span>
+                        </label>
+                        <div className="relative">
+                          <select
+                            id="organization_id"
+                            value={organizationId}
+                            onChange={e => setOrganizationId(e.target.value)}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-3 pr-10 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all appearance-none"
+                          >
+                            <option value="">— No institution assigned —</option>
+                            {remoteOrganizations.map(org => (
+                              <option key={org._id} value={org._id}>{org.name}</option>
+                            ))}
+                            {institutionsList.filter(inst => !remoteOrganizations.some(r => r.name === inst.name)).map(inst => (
+                              <option key={inst.id} value={inst.id}>{inst.name} (local)</option>
+                            ))}
+                          </select>
+                          <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                            <ChevronDown className="h-4 w-4" />
+                          </div>
+                        </div>
+                        <p className="text-[10px] text-slate-400 mt-1">Maps this member to an institution on the ABMS backend.</p>
                       </div>
                     </div>
 
