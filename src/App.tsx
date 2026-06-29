@@ -779,7 +779,7 @@ export default function App() {
         phone: newRecord.phone,
         access_level_id: newRecord.access_level_id,
         organization_id: newRecord.organization_id || null
-      }, null, 2)}\`
+      }, null, 2)}`
     ]);
 
     try {
