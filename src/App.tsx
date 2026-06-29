@@ -1301,8 +1301,6 @@ export default function App() {
                           </div>
                         </div>
                       </div>
-                    </div>
-
 
                       {/* Institution / Organization mapping */}
                       <div>
