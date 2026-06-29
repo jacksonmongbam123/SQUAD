@@ -225,7 +225,7 @@ export default function App() {
     localStorage.setItem('squad_git_token', gitToken);
   }, [gitToken]);
 
-  // Fetch organizations from ABMS backend on mount
+  // Fetch organizations from ABMS backend on mount and sync into institutionsList
   useEffect(() => {
     const fetchOrgs = async () => {
       setOrgsLoading(true);
@@ -233,7 +233,20 @@ export default function App() {
         const res = await fetch('https://abms-lkw9.onrender.com/df/institute/all');
         if (res.ok) {
           const data = await res.json();
-          if (Array.isArray(data)) setRemoteOrganizations(data);
+          if (Array.isArray(data) && data.length > 0) {
+            setRemoteOrganizations(data);
+            // Sync backend institutions into institutionsList so they survive restarts
+            setInstitutionsList(prev => {
+              const merged = [...prev];
+              data.forEach((org: { _id: string; name: string; is_active?: string }) => {
+                const exists = merged.some(inst => inst.name.toLowerCase() === org.name.toLowerCase());
+                if (!exists) {
+                  merged.push({ id: org._id, name: org.name, is_active: org.is_active || 'true' });
+                }
+              });
+              return merged;
+            });
+          }
         }
       } catch (err) {
         console.warn('Could not fetch organizations from backend:', err);
@@ -484,6 +497,20 @@ export default function App() {
         `[${logTime()}] SUCCESS: Institution registered on remote server!`,
         `[${logTime()}] Server Data: ${JSON.stringify(responseData, null, 2)}`
       ]);
+
+      // Re-fetch remote organizations to keep in sync
+      try {
+        const refetchRes = await fetch('https://abms-lkw9.onrender.com/df/institute/all');
+        if (refetchRes.ok) {
+          const refetchData = await refetchRes.json();
+          if (Array.isArray(refetchData)) {
+            setRemoteOrganizations(refetchData);
+            setInstPostLogs(prev => [...prev, `[${logTime()}] Re-fetched remote organizations list`]);
+          }
+        }
+      } catch (refetchErr) {
+        console.warn('Could not re-fetch organizations:', refetchErr);
+      }
 
       const cleanId = 'inst_' + Date.now();
       let updated = [...institutionsList];
