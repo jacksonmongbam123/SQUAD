@@ -45,11 +45,8 @@ export default function App() {
     return saved === 'true';
   });
 
-  // Dynamic Classification Lists (Loaded from LocalStorage, fallback to standard values)
-  const [userTypesList, setUserTypesList] = useState<{ id: string, label: string }[]>(() => {
-    const saved = localStorage.getItem('squad_user_types');
-    return saved ? JSON.parse(saved) : USER_TYPES;
-  });
+  // Dynamic Classification Lists - start empty and load from backend
+  const [userTypesList, setUserTypesList] = useState<{ id: string, label: string }[]>([]);
 
   const [accessLevelsList, setAccessLevelsList] = useState<{ id: number, label: string }[]>(() => {
     // Force reset to new access levels (Level 1-6)
@@ -91,16 +88,18 @@ export default function App() {
   });
 
 
-  // Clear demo data from localStorage on first load
+  // Clear stale data from localStorage on first load (only titles and grades)
   useEffect(() => {
     localStorage.removeItem('squad_titles');
     localStorage.removeItem('squad_grades');
-    localStorage.removeItem('squad_user_types');
+    // Note: NOT clearing squad_user_types here - backend is source of truth
   }, []);
 
     // Synchronize dynamic parameters to localStorage
   useEffect(() => {
-    localStorage.setItem('squad_user_types', JSON.stringify(userTypesList));
+    if (userTypesList.length > 0) {
+      localStorage.setItem('squad_user_types', JSON.stringify(userTypesList));
+    }
   }, [userTypesList]);
 
   useEffect(() => {
@@ -317,18 +316,19 @@ export default function App() {
       }
 
       try {
-        // Fetch user types
+        // Fetch user types - backend data is the source of truth
         const userTypesRes = await fetch('https://abms-lkw9.onrender.com/df/userType/all');
         if (userTypesRes.ok) {
           const userTypesData = await userTypesRes.json();
           if (Array.isArray(userTypesData) && userTypesData.length > 0) {
             const remoteUserTypes = userTypesData.map((ut: any) => ({ id: ut._id || ut.id, label: typeof ut === 'string' ? ut : ut.type_name }));
-            setUserTypesList(prev => {
-              const localOnly = prev.filter(lut => !remoteUserTypes.some((rut: { label: string }) => rut.label === lut.label));
-              const merged = [...remoteUserTypes, ...localOnly];
-              localStorage.setItem('squad_user_types', JSON.stringify(merged));
-              return merged;
-            });
+            // Use backend data as source of truth - replace local data completely
+            setUserTypesList(remoteUserTypes);
+            localStorage.setItem('squad_user_types', JSON.stringify(remoteUserTypes));
+          } else if (Array.isArray(userTypesData) && userTypesData.length === 0) {
+            // Backend has no user types, clear local data too
+            setUserTypesList([]);
+            localStorage.setItem('squad_user_types', JSON.stringify([]));
           }
         }
       } catch (err) {
@@ -409,11 +409,6 @@ export default function App() {
     const userType = userTypesList.find(ut => ut.id === id);
     if (!userType) return;
 
-    // Remove from local state and localStorage immediately for responsive UI
-    const updatedList = userTypesList.filter(ut => ut.id !== id);
-    setUserTypesList(updatedList);
-    localStorage.setItem('squad_user_types', JSON.stringify(updatedList));
-
     try {
       const response = await fetch('https://abms-lkw9.onrender.com/df/userType/delete-by-name', {
         method: 'POST',
@@ -424,6 +419,10 @@ export default function App() {
       });
 
       if (response.ok) {
+        // Only remove from local state after successful backend delete
+        const updatedList = userTypesList.filter(ut => ut.id !== id);
+        setUserTypesList(updatedList);
+        localStorage.setItem('squad_user_types', JSON.stringify(updatedList));
         setSuccessToast(`Deleted User Type: ${userType.label}`);
         setTimeout(() => setSuccessToast(null), 3000);
       } else {
@@ -432,15 +431,11 @@ export default function App() {
           const error = await response.json();
           errorMsg = error.message || error.error || errorMsg;
         } catch {}
-        // Backend delete failed, but item is already removed locally
-        setSuccessToast(`Removed User Type: ${userType.label} locally (backend: ${errorMsg})`);
-        setTimeout(() => setSuccessToast(null), 4000);
+        alert(`Failed to delete from database: ${errorMsg}. Please try again.`);
       }
     } catch (err) {
       console.error('Error deleting user type:', err);
-      // Network error - item already removed locally, show info toast
-      setSuccessToast(`Removed User Type: ${userType.label} locally (backend connection failed)`);
-      setTimeout(() => setSuccessToast(null), 4000);
+      alert('Error connecting to backend. Please check your connection and try again.');
     }
   };
 
