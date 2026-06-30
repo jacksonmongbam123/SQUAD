@@ -264,7 +264,7 @@ export default function App() {
     fetchOrgs();
   }, []);
 
-  // Fetch titles from ABMS backend on mount
+  // Fetch titles from ABMS backend on mount and sync with local state
   useEffect(() => {
     const fetchTitles = async () => {
       setTitlesLoading(true);
@@ -275,6 +275,14 @@ export default function App() {
           if (Array.isArray(data)) {
             const titles = data.map((t: any) => typeof t === 'string' ? t : t.title);
             setRemoteTitlesList(titles);
+            // Sync titlesList with backend: use remote titles as source of truth,
+            // keeping any locally-added titles that aren't in the remote list yet
+            setTitlesList(prev => {
+              const localOnly = prev.filter(t => !titles.includes(t));
+              const merged = [...titles, ...localOnly];
+              localStorage.setItem('squad_titles', JSON.stringify(merged));
+              return merged;
+            });
           }
         }
       } catch (err) {
@@ -286,7 +294,7 @@ export default function App() {
     fetchTitles();
   }, []);
 
-  // Fetch grades and user types from ABMS backend on mount
+  // Fetch grades and user types from ABMS backend on mount and sync with local state
   useEffect(() => {
     const fetchGradesAndUserTypes = async () => {
       try {
@@ -296,8 +304,12 @@ export default function App() {
           const gradesData = await gradesRes.json();
           if (Array.isArray(gradesData) && gradesData.length > 0) {
             const remoteGrades = gradesData.map((g: any) => ({ id: g._id || g.id, grade: typeof g === 'string' ? g : g.grade }));
-            const localGrades = gradesList.filter(lg => !gradesData.includes(lg.grade));
-            setGradesList([...remoteGrades, ...localGrades]);
+            setGradesList(prev => {
+              const localOnly = prev.filter(lg => !remoteGrades.some((rg: { grade: string }) => rg.grade === lg.grade));
+              const merged = [...remoteGrades, ...localOnly];
+              localStorage.setItem('squad_grades', JSON.stringify(merged));
+              return merged;
+            });
           }
         }
       } catch (err) {
@@ -311,8 +323,12 @@ export default function App() {
           const userTypesData = await userTypesRes.json();
           if (Array.isArray(userTypesData) && userTypesData.length > 0) {
             const remoteUserTypes = userTypesData.map((ut: any) => ({ id: ut._id || ut.id, label: typeof ut === 'string' ? ut : ut.type_name }));
-            const localUserTypes = userTypesList.filter(lut => !userTypesData.includes(lut.label));
-            setUserTypesList([...remoteUserTypes, ...localUserTypes]);
+            setUserTypesList(prev => {
+              const localOnly = prev.filter(lut => !remoteUserTypes.some((rut: { label: string }) => rut.label === lut.label));
+              const merged = [...remoteUserTypes, ...localOnly];
+              localStorage.setItem('squad_user_types', JSON.stringify(merged));
+              return merged;
+            });
           }
         }
       } catch (err) {
@@ -393,6 +409,11 @@ export default function App() {
     const userType = userTypesList.find(ut => ut.id === id);
     if (!userType) return;
 
+    // Remove from local state and localStorage immediately for responsive UI
+    const updatedList = userTypesList.filter(ut => ut.id !== id);
+    setUserTypesList(updatedList);
+    localStorage.setItem('squad_user_types', JSON.stringify(updatedList));
+
     try {
       const response = await fetch('https://abms-lkw9.onrender.com/df/userType/delete-by-name', {
         method: 'POST',
@@ -403,16 +424,23 @@ export default function App() {
       });
 
       if (response.ok) {
-        setUserTypesList(userTypesList.filter(ut => ut.id !== id));
         setSuccessToast(`Deleted User Type: ${userType.label}`);
         setTimeout(() => setSuccessToast(null), 3000);
       } else {
-        const error = await response.json();
-        alert(error.message || error.error || 'Failed to delete user type');
+        let errorMsg = 'Failed to delete user type';
+        try {
+          const error = await response.json();
+          errorMsg = error.message || error.error || errorMsg;
+        } catch {}
+        // Backend delete failed, but item is already removed locally
+        setSuccessToast(`Removed User Type: ${userType.label} locally (backend: ${errorMsg})`);
+        setTimeout(() => setSuccessToast(null), 4000);
       }
     } catch (err) {
       console.error('Error deleting user type:', err);
-      alert('Error connecting to backend');
+      // Network error - item already removed locally, show info toast
+      setSuccessToast(`Removed User Type: ${userType.label} locally (backend connection failed)`);
+      setTimeout(() => setSuccessToast(null), 4000);
     }
   };
 
@@ -484,6 +512,12 @@ export default function App() {
       return;
     }
 
+    // Remove from local state and localStorage immediately for responsive UI
+    const updatedList = titlesList.filter(t => t !== title);
+    setTitlesList(updatedList);
+    setRemoteTitlesList(remoteTitlesList.filter(t => t !== title));
+    localStorage.setItem('squad_titles', JSON.stringify(updatedList));
+
     try {
       const response = await fetch('https://abms-lkw9.onrender.com/df/title/delete-by-name', {
         method: 'POST',
@@ -494,17 +528,23 @@ export default function App() {
       });
 
       if (response.ok) {
-        setTitlesList(titlesList.filter(t => t !== title));
-        setRemoteTitlesList(remoteTitlesList.filter(t => t !== title));
         setSuccessToast(`Deleted Title: ${title}`);
         setTimeout(() => setSuccessToast(null), 3000);
       } else {
-        const error = await response.json();
-        alert(error.message || error.error || 'Failed to delete title');
+        let errorMsg = 'Failed to delete title';
+        try {
+          const error = await response.json();
+          errorMsg = error.message || error.error || errorMsg;
+        } catch {}
+        // Backend delete failed, but item is already removed locally
+        setSuccessToast(`Removed Title: ${title} locally (backend: ${errorMsg})`);
+        setTimeout(() => setSuccessToast(null), 4000);
       }
     } catch (err) {
       console.error('Error deleting title:', err);
-      alert('Error connecting to backend');
+      // Network error - item already removed locally, show info toast
+      setSuccessToast(`Removed Title: ${title} locally (backend connection failed)`);
+      setTimeout(() => setSuccessToast(null), 4000);
     }
   };
 
@@ -819,6 +859,11 @@ export default function App() {
     const grade = gradesList.find(g => g.id === id);
     if (!grade) return;
 
+    // Remove from local state and localStorage immediately for responsive UI
+    const updatedList = gradesList.filter(g => g.id !== id);
+    setGradesList(updatedList);
+    localStorage.setItem('squad_grades', JSON.stringify(updatedList));
+
     try {
       const response = await fetch('https://abms-lkw9.onrender.com/df/grade/delete-by-name', {
         method: 'POST',
@@ -829,16 +874,23 @@ export default function App() {
       });
 
       if (response.ok) {
-        setGradesList(gradesList.filter(g => g.id !== id));
         setSuccessToast(`Deleted Grade: ${grade.grade}`);
         setTimeout(() => setSuccessToast(null), 3000);
       } else {
-        const error = await response.json();
-        alert(error.message || error.error || 'Failed to delete grade');
+        let errorMsg = 'Failed to delete grade';
+        try {
+          const error = await response.json();
+          errorMsg = error.message || error.error || errorMsg;
+        } catch {}
+        // Backend delete failed, but item is already removed locally
+        setSuccessToast(`Removed Grade: ${grade.grade} locally (backend: ${errorMsg})`);
+        setTimeout(() => setSuccessToast(null), 4000);
       }
     } catch (err) {
       console.error('Error deleting grade:', err);
-      alert('Error connecting to backend');
+      // Network error - item already removed locally, show info toast
+      setSuccessToast(`Removed Grade: ${grade.grade} locally (backend connection failed)`);
+      setTimeout(() => setSuccessToast(null), 4000);
     }
   };
 
