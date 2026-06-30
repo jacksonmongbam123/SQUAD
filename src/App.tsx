@@ -344,27 +344,69 @@ export default function App() {
   const [registerPostStatus, setRegisterPostStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [registerPostErrorMsg, setRegisterPostErrorMsg] = useState<string | null>(null);
 
-  const handleAddUserType = (e: React.FormEvent) => {
+  const handleAddUserType = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newUserTypeId.trim() || !newUserTypeLabel.trim()) return;
-    const cleanId = newUserTypeId.trim().toLowerCase().replace(/\s+/g, '_');
-    if (userTypesList.some(ut => ut.id === cleanId)) {
-      alert('User Type ID already exists');
+    if (!newUserTypeLabel.trim()) return;
+    const cleanLabel = newUserTypeLabel.trim();
+    if (userTypesList.some(ut => ut.label.toLowerCase() === cleanLabel.toLowerCase())) {
+      alert('User Type already exists');
       return;
     }
-    setUserTypesList([...userTypesList, { id: cleanId, label: newUserTypeLabel.trim() }]);
-    setNewUserTypeId('');
-    setNewUserTypeLabel('');
-    setSuccessToast(`Added User Type: ${newUserTypeLabel}`);
-    setTimeout(() => setSuccessToast(null), 3000);
+
+    try {
+      const response = await fetch('https://abms-lkw9.onrender.com/df/userType/add', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ type_name: cleanLabel })
+      });
+
+      if (response.ok) {
+        const cleanId = cleanLabel.toLowerCase().replace(/\s+/g, '_');
+        setUserTypesList([...userTypesList, { id: cleanId, label: cleanLabel }]);
+        setNewUserTypeLabel('');
+        setSuccessToast(`Added User Type: ${cleanLabel}`);
+        setTimeout(() => setSuccessToast(null), 3000);
+      } else {
+        const error = await response.json();
+        alert(error.message || error.error || 'Failed to add user type');
+      }
+    } catch (err) {
+      console.error('Error adding user type:', err);
+      alert('Error connecting to backend');
+    }
   };
 
-  const handleDeleteUserType = (id: string) => {
+  const handleDeleteUserType = async (id: string) => {
     if (userTypesList.length <= 1) {
       alert('Must keep at least one User Type!');
       return;
     }
-    setUserTypesList(userTypesList.filter(ut => ut.id !== id));
+    const userType = userTypesList.find(ut => ut.id === id);
+    if (!userType) return;
+
+    try {
+      const response = await fetch('https://abms-lkw9.onrender.com/df/userType/delete-by-name', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name: userType.label })
+      });
+
+      if (response.ok) {
+        setUserTypesList(userTypesList.filter(ut => ut.id !== id));
+        setSuccessToast(`Deleted User Type: ${userType.label}`);
+        setTimeout(() => setSuccessToast(null), 3000);
+      } else {
+        const error = await response.json();
+        alert(error.message || error.error || 'Failed to delete user type');
+      }
+    } catch (err) {
+      console.error('Error deleting user type:', err);
+      alert('Error connecting to backend');
+    }
   };
 
   const handleAddAccessLevel = (e: React.FormEvent) => {
@@ -733,87 +775,64 @@ export default function App() {
     if (!newGradeName.trim()) return;
     const grade = newGradeName.trim();
     if (gradesList.some(g => g.grade.toLowerCase() === grade.toLowerCase())) {
-      alert('A grade with this name already exists.');
+      alert('Grade already exists');
       return;
     }
-
-    setIsPostingGrade(true);
-    setGradePostStatus('idle');
-    setGradePostErrorMsg(null);
-    const logTime = () => new Date().toLocaleTimeString();
-    setGradePostLogs([
-      `[${logTime()}] Initiating POST request to https://abms-lkw9.onrender.com/df/grade/add`,
-      `[${logTime()}] Payload: { "grade": "${grade}" }`
-    ]);
 
     try {
       const response = await fetch('https://abms-lkw9.onrender.com/df/grade/add', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json'
         },
-        body: JSON.stringify({
-          grade: grade
-        })
+        body: JSON.stringify({ grade })
       });
 
-      setGradePostLogs(prev => [...prev, `[${logTime()}] Response status code: ${response.status} (${response.statusText})`]);
-      
-      if (!response.ok) {
-        throw new Error(`Server returned status ${response.status}: ${response.statusText}`);
+      if (response.ok) {
+        const cleanId = 'grade_' + Date.now();
+        setGradesList([...gradesList, { id: cleanId, grade }]);
+        setNewGradeName('');
+        setSuccessToast(`Added Grade: ${grade}`);
+        setTimeout(() => setSuccessToast(null), 3000);
+      } else {
+        const error = await response.json();
+        alert(error.message || error.error || 'Failed to add grade');
       }
-
-      const responseText = await response.text();
-      let responseData;
-      try {
-        responseData = responseText ? JSON.parse(responseText) : {};
-        setGradePostLogs(prev => [...prev, `[${logTime()}] Response JSON received successfully!`]);
-      } catch (err) {
-        responseData = responseText;
-        setGradePostLogs(prev => [...prev, `[${logTime()}] Response raw text: ${responseText}`]);
-      }
-
-      setGradePostStatus('success');
-      setGradePostLogs(prev => [
-        ...prev, 
-        `[${logTime()}] SUCCESS: Grade registered on remote server!`,
-        `[${logTime()}] Server Data: ${JSON.stringify(responseData, null, 2)}`
-      ]);
-
-      const cleanId = 'grade_' + Date.now();
-      setGradesList([...gradesList, { id: cleanId, grade }]);
-      setNewGradeName('');
-      setSuccessToast(`Remote POST Success & Added Local Grade: ${grade}`);
-      setTimeout(() => setSuccessToast(null), 4000);
-    } catch (error: any) {
-      console.error(error);
-      const errMsg = error.message || String(error);
-      setGradePostStatus('error');
-      setGradePostErrorMsg(errMsg);
-      setGradePostLogs(prev => [
-        ...prev,
-        `[${logTime()}] ERROR: Request failed.`,
-        `[${logTime()}] Details: ${errMsg}`
-      ]);
-      
-      // Still append locally so user data is retained
-      const cleanId = 'grade_' + Date.now();
-      setGradesList([...gradesList, { id: cleanId, grade }]);
-      setNewGradeName('');
-      setSuccessToast(`Added locally (Remote POST failed: ${errMsg})`);
-      setTimeout(() => setSuccessToast(null), 4000);
-    } finally {
-      setIsPostingGrade(false);
+    } catch (err) {
+      console.error('Error adding grade:', err);
+      alert('Error connecting to backend');
     }
   };
 
-  const handleDeleteGrade = (id: string) => {
+  const handleDeleteGrade = async (id: string) => {
     if (gradesList.length <= 1) {
       alert('Must keep at least one Grade option!');
       return;
     }
-    setGradesList(gradesList.filter(g => g.id !== id));
+    const grade = gradesList.find(g => g.id === id);
+    if (!grade) return;
+
+    try {
+      const response = await fetch('https://abms-lkw9.onrender.com/df/grade/delete-by-name', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name: grade.grade })
+      });
+
+      if (response.ok) {
+        setGradesList(gradesList.filter(g => g.id !== id));
+        setSuccessToast(`Deleted Grade: ${grade.grade}`);
+        setTimeout(() => setSuccessToast(null), 3000);
+      } else {
+        const error = await response.json();
+        alert(error.message || error.error || 'Failed to delete grade');
+      }
+    } catch (err) {
+      console.error('Error deleting grade:', err);
+      alert('Error connecting to backend');
+    }
   };
 
   const handleResetConfig = () => {
