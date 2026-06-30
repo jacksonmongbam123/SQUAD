@@ -323,7 +323,6 @@ export default function App() {
   }, []);
 
   // States for adding new items in the Configure panel
-  const [newUserTypeId, setNewUserTypeId] = useState('');
   const [newUserTypeLabel, setNewUserTypeLabel] = useState('');
   const [newAccessLevelId, setNewAccessLevelId] = useState('');
   const [newAccessLevelLabel, setNewAccessLevelLabel] = useState('');
@@ -2152,18 +2151,10 @@ export default function App() {
                             <input
                               type="text"
                               required
-                              placeholder="ID (e.g. guest)"
-                              value={newUserTypeId}
-                              onChange={e => setNewUserTypeId(e.target.value)}
-                              className="w-1/2 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                            />
-                            <input
-                              type="text"
-                              required
                               placeholder="Label (e.g. Guest)"
                               value={newUserTypeLabel}
                               onChange={e => setNewUserTypeLabel(e.target.value)}
-                              className="w-1/2 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                              className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                             />
                             <button
                               type="submit"
