@@ -91,13 +91,6 @@ export default function App() {
   });
 
 
-  // Clear demo data from localStorage on first load
-  useEffect(() => {
-    localStorage.removeItem('squad_titles');
-    localStorage.removeItem('squad_grades');
-    localStorage.removeItem('squad_user_types');
-  }, []);
-
     // Synchronize dynamic parameters to localStorage
   useEffect(() => {
     localStorage.setItem('squad_user_types', JSON.stringify(userTypesList));
@@ -242,17 +235,14 @@ export default function App() {
           const data = await res.json();
           if (Array.isArray(data) && data.length > 0) {
             setRemoteOrganizations(data);
-            // Sync backend institutions into institutionsList so they survive restarts
-            setInstitutionsList(prev => {
-              const merged = [...prev];
-              data.forEach((org: { _id: string; name: string; is_active?: string }) => {
-                const exists = merged.some(inst => inst.name.toLowerCase() === org.name.toLowerCase());
-                if (!exists) {
-                  merged.push({ id: org._id, name: org.name, is_active: org.is_active || 'true' });
-                }
-              });
-              return merged;
-            });
+            // Use backend as source of truth — replace local data entirely
+            const remoteInstitutions = data.map((org: { _id: string; name: string; is_active?: string }) => ({
+              id: org._id,
+              name: org.name,
+              is_active: org.is_active || 'true'
+            }));
+            setInstitutionsList(remoteInstitutions);
+            localStorage.setItem('squad_institutions', JSON.stringify(remoteInstitutions));
           }
         }
       } catch (err) {
@@ -275,14 +265,9 @@ export default function App() {
           if (Array.isArray(data)) {
             const titles = data.map((t: any) => typeof t === 'string' ? t : t.title);
             setRemoteTitlesList(titles);
-            // Sync titlesList with backend: use remote titles as source of truth,
-            // keeping any locally-added titles that aren't in the remote list yet
-            setTitlesList(prev => {
-              const localOnly = prev.filter(t => !titles.includes(t));
-              const merged = [...titles, ...localOnly];
-              localStorage.setItem('squad_titles', JSON.stringify(merged));
-              return merged;
-            });
+            // Use backend as source of truth — replace local data entirely
+            setTitlesList(titles);
+            localStorage.setItem('squad_titles', JSON.stringify(titles));
           }
         }
       } catch (err) {
@@ -302,14 +287,11 @@ export default function App() {
         const gradesRes = await fetch('https://abms-lkw9.onrender.com/df/grade/all');
         if (gradesRes.ok) {
           const gradesData = await gradesRes.json();
-          if (Array.isArray(gradesData) && gradesData.length > 0) {
+          if (Array.isArray(gradesData)) {
             const remoteGrades = gradesData.map((g: any) => ({ id: g._id || g.id, grade: typeof g === 'string' ? g : g.grade }));
-            setGradesList(prev => {
-              const localOnly = prev.filter(lg => !remoteGrades.some((rg: { grade: string }) => rg.grade === lg.grade));
-              const merged = [...remoteGrades, ...localOnly];
-              localStorage.setItem('squad_grades', JSON.stringify(merged));
-              return merged;
-            });
+            // Use backend as source of truth — replace local data entirely
+            setGradesList(remoteGrades);
+            localStorage.setItem('squad_grades', JSON.stringify(remoteGrades));
           }
         }
       } catch (err) {
@@ -321,14 +303,11 @@ export default function App() {
         const userTypesRes = await fetch('https://abms-lkw9.onrender.com/df/userType/all');
         if (userTypesRes.ok) {
           const userTypesData = await userTypesRes.json();
-          if (Array.isArray(userTypesData) && userTypesData.length > 0) {
+          if (Array.isArray(userTypesData)) {
             const remoteUserTypes = userTypesData.map((ut: any) => ({ id: ut._id || ut.id, label: typeof ut === 'string' ? ut : ut.type_name }));
-            setUserTypesList(prev => {
-              const localOnly = prev.filter(lut => !remoteUserTypes.some((rut: { label: string }) => rut.label === lut.label));
-              const merged = [...remoteUserTypes, ...localOnly];
-              localStorage.setItem('squad_user_types', JSON.stringify(merged));
-              return merged;
-            });
+            // Use backend as source of truth — replace local data entirely
+            setUserTypesList(remoteUserTypes);
+            localStorage.setItem('squad_user_types', JSON.stringify(remoteUserTypes));
           }
         }
       } catch (err) {
@@ -386,8 +365,9 @@ export default function App() {
       });
 
       if (response.ok) {
-        const cleanId = cleanLabel.toLowerCase().replace(/\s+/g, '_');
-        setUserTypesList([...userTypesList, { id: cleanId, label: cleanLabel }]);
+        const data = await response.json();
+        const backendId = data?._id || data?.id || cleanLabel.toLowerCase().replace(/\s+/g, '_');
+        setUserTypesList([...userTypesList, { id: backendId, label: cleanLabel }]);
         setNewUserTypeLabel('');
         setSuccessToast(`Added User Type: ${cleanLabel}`);
         setTimeout(() => setSuccessToast(null), 3000);
@@ -415,12 +395,11 @@ export default function App() {
     localStorage.setItem('squad_user_types', JSON.stringify(updatedList));
 
     try {
-      const response = await fetch('https://abms-lkw9.onrender.com/df/userType/delete-by-name', {
+      const response = await fetch(`https://abms-lkw9.onrender.com/df/userType/delete/${id}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ name: userType.label })
+        }
       });
 
       if (response.ok) {
@@ -432,13 +411,11 @@ export default function App() {
           const error = await response.json();
           errorMsg = error.message || error.error || errorMsg;
         } catch {}
-        // Backend delete failed, but item is already removed locally
         setSuccessToast(`Removed User Type: ${userType.label} locally (backend: ${errorMsg})`);
         setTimeout(() => setSuccessToast(null), 4000);
       }
     } catch (err) {
       console.error('Error deleting user type:', err);
-      // Network error - item already removed locally, show info toast
       setSuccessToast(`Removed User Type: ${userType.label} locally (backend connection failed)`);
       setTimeout(() => setSuccessToast(null), 4000);
     }
@@ -865,12 +842,11 @@ export default function App() {
     localStorage.setItem('squad_grades', JSON.stringify(updatedList));
 
     try {
-      const response = await fetch('https://abms-lkw9.onrender.com/df/grade/delete-by-name', {
+      const response = await fetch(`https://abms-lkw9.onrender.com/df/grade/delete/${id}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ name: grade.grade })
+        }
       });
 
       if (response.ok) {
