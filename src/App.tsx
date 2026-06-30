@@ -272,7 +272,10 @@ export default function App() {
         const res = await fetch('https://abms-lkw9.onrender.com/df/title/all');
         if (res.ok) {
           const data = await res.json();
-          if (Array.isArray(data)) setRemoteTitlesList(data);
+          if (Array.isArray(data)) {
+            const titles = data.map((t: any) => typeof t === 'string' ? t : t.title);
+            setRemoteTitlesList(titles);
+          }
         }
       } catch (err) {
         console.warn('Could not fetch titles from backend:', err);
@@ -292,7 +295,7 @@ export default function App() {
         if (gradesRes.ok) {
           const gradesData = await gradesRes.json();
           if (Array.isArray(gradesData) && gradesData.length > 0) {
-            const remoteGrades = gradesData.map((g: string, i: number) => ({ id: `grade_remote_${i}`, grade: g }));
+            const remoteGrades = gradesData.map((g: any) => ({ id: g._id || g.id, grade: typeof g === 'string' ? g : g.grade }));
             const localGrades = gradesList.filter(lg => !gradesData.includes(lg.grade));
             setGradesList([...remoteGrades, ...localGrades]);
           }
@@ -307,7 +310,7 @@ export default function App() {
         if (userTypesRes.ok) {
           const userTypesData = await userTypesRes.json();
           if (Array.isArray(userTypesData) && userTypesData.length > 0) {
-            const remoteUserTypes = userTypesData.map((ut: string, i: number) => ({ id: `usertype_remote_${i}`, label: ut }));
+            const remoteUserTypes = userTypesData.map((ut: any) => ({ id: ut._id || ut.id, label: typeof ut === 'string' ? ut : ut.type_name }));
             const localUserTypes = userTypesList.filter(lut => !userTypesData.includes(lut.label));
             setUserTypesList([...remoteUserTypes, ...localUserTypes]);
           }
