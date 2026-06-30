@@ -90,7 +90,15 @@ export default function App() {
     return (localStorage.getItem('squad_server_status') as any) || 'online';
   });
 
-  // Synchronize dynamic parameters to localStorage
+
+  // Clear demo data from localStorage on first load
+  useEffect(() => {
+    localStorage.removeItem('squad_titles');
+    localStorage.removeItem('squad_grades');
+    localStorage.removeItem('squad_user_types');
+  }, []);
+
+    // Synchronize dynamic parameters to localStorage
   useEffect(() => {
     localStorage.setItem('squad_user_types', JSON.stringify(userTypesList));
   }, [userTypesList]);
