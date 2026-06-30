@@ -264,7 +264,7 @@ export default function App() {
     fetchOrgs();
   }, []);
 
-  // Fetch titles from ABMS backend on mount
+  // Fetch titles from ABMS backend on mount and sync with local state
   useEffect(() => {
     const fetchTitles = async () => {
       setTitlesLoading(true);
@@ -275,6 +275,14 @@ export default function App() {
           if (Array.isArray(data)) {
             const titles = data.map((t: any) => typeof t === 'string' ? t : t.title);
             setRemoteTitlesList(titles);
+            // Sync titlesList with backend: use remote titles as the source of truth,
+            // keeping any locally-added titles that aren't in the remote list yet
+            setTitlesList(prev => {
+              const localOnly = prev.filter(t => !titles.includes(t));
+              const merged = [...titles, ...localOnly];
+              localStorage.setItem('squad_titles', JSON.stringify(merged));
+              return merged;
+            });
           }
         }
       } catch (err) {
@@ -484,6 +492,12 @@ export default function App() {
       return;
     }
 
+    // Remove from local state and localStorage immediately for responsive UI
+    const updatedList = titlesList.filter(t => t !== title);
+    setTitlesList(updatedList);
+    setRemoteTitlesList(remoteTitlesList.filter(t => t !== title));
+    localStorage.setItem('squad_titles', JSON.stringify(updatedList));
+
     try {
       const response = await fetch('https://abms-lkw9.onrender.com/df/title/delete-by-name', {
         method: 'POST',
@@ -494,17 +508,27 @@ export default function App() {
       });
 
       if (response.ok) {
-        setTitlesList(titlesList.filter(t => t !== title));
-        setRemoteTitlesList(remoteTitlesList.filter(t => t !== title));
         setSuccessToast(`Deleted Title: ${title}`);
         setTimeout(() => setSuccessToast(null), 3000);
       } else {
         const error = await response.json();
-        alert(error.message || error.error || 'Failed to delete title');
+        // Title was already removed locally, just inform about backend status
+        if (error.error === 'Title not found' || error.message?.includes('not found')) {
+          setSuccessToast(`Removed Title: ${title} (was already deleted from database)`);
+          setTimeout(() => setSuccessToast(null), 3000);
+        } else {
+          // Re-add to local state if backend delete failed for other reasons
+          setTitlesList(prev => [...prev, title]);
+          setRemoteTitlesList(prev => [...prev, title]);
+          localStorage.setItem('squad_titles', JSON.stringify([...updatedList, title]));
+          alert(error.message || error.error || 'Failed to delete title from backend');
+        }
       }
     } catch (err) {
       console.error('Error deleting title:', err);
-      alert('Error connecting to backend');
+      // Network error - title was already removed locally, show info toast
+      setSuccessToast(`Removed Title: ${title} locally (backend connection failed)`);
+      setTimeout(() => setSuccessToast(null), 3000);
     }
   };
 
