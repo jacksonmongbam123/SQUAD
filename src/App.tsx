@@ -61,6 +61,8 @@ export default function App() {
     const saved = localStorage.getItem('squad_titles');
     return saved ? JSON.parse(saved) : TITLES;
   });
+  const [remoteTitlesList, setRemoteTitlesList] = useState<string[]>([]);
+  const [titlesLoading, setTitlesLoading] = useState<boolean>(false);
 
   const [sexesList, setSexesList] = useState<{ id: string, label: string }[]>(() => {
     const saved = localStorage.getItem('squad_sexes');
@@ -351,12 +353,33 @@ export default function App() {
     setTimeout(() => setSuccessToast(null), 3000);
   };
 
-  const handleDeleteTitle = (title: string) => {
-    if (titlesList.length <= 1) {
+  const handleDeleteTitle = async (title: string) => {
+    if (titlesList.length <= 1 && remoteTitlesList.length <= 1) {
       alert('Must keep at least one Title!');
       return;
     }
-    setTitlesList(titlesList.filter(t => t !== title));
+
+    try {
+      const response = await fetch('https://abms-lkw9.onrender.com/df/title/delete-by-name', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ title })
+      });
+
+      if (response.ok) {
+        setTitlesList(titlesList.filter(t => t !== title));
+        setRemoteTitlesList(remoteTitlesList.filter(t => t !== title));
+        setSuccessToast(`Deleted Title: ${title}`);
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to delete title from database');
+      }
+    } catch (err) {
+      console.error('Error deleting title:', err);
+      alert('Error deleting title from database');
+    }
   };
 
   const handleAddSex = (e: React.FormEvent) => {
@@ -1377,8 +1400,11 @@ export default function App() {
                               onChange={e => setTitleId(e.target.value)}
                               className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-3 pr-10 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all appearance-none"
                             >
-                              {titlesList.map(title => (
+                              {remoteTitlesList.map(title => (
                                 <option key={title} value={title}>{title}</option>
+                              ))}
+                              {titlesList.filter(t => !remoteTitlesList.includes(t)).map(title => (
+                                <option key={title} value={title}>{title} (local)</option>
                               ))}
                             </select>
                             <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
