@@ -259,6 +259,61 @@ export default function App() {
     fetchOrgs();
   }, []);
 
+  // Fetch titles from ABMS backend on mount
+  useEffect(() => {
+    const fetchTitles = async () => {
+      setTitlesLoading(true);
+      try {
+        const res = await fetch('https://abms-lkw9.onrender.com/df/title/all');
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data)) setRemoteTitlesList(data);
+        }
+      } catch (err) {
+        console.warn('Could not fetch titles from backend:', err);
+      } finally {
+        setTitlesLoading(false);
+      }
+    };
+    fetchTitles();
+  }, []);
+
+  // Fetch grades and user types from ABMS backend on mount
+  useEffect(() => {
+    const fetchGradesAndUserTypes = async () => {
+      try {
+        // Fetch grades
+        const gradesRes = await fetch('https://abms-lkw9.onrender.com/df/grade/all');
+        if (gradesRes.ok) {
+          const gradesData = await gradesRes.json();
+          if (Array.isArray(gradesData) && gradesData.length > 0) {
+            const remoteGrades = gradesData.map((g: string, i: number) => ({ id: `grade_remote_${i}`, grade: g }));
+            const localGrades = gradesList.filter(lg => !gradesData.includes(lg.grade));
+            setGradesList([...remoteGrades, ...localGrades]);
+          }
+        }
+      } catch (err) {
+        console.warn('Could not fetch grades from backend:', err);
+      }
+
+      try {
+        // Fetch user types
+        const userTypesRes = await fetch('https://abms-lkw9.onrender.com/df/userType/all');
+        if (userTypesRes.ok) {
+          const userTypesData = await userTypesRes.json();
+          if (Array.isArray(userTypesData) && userTypesData.length > 0) {
+            const remoteUserTypes = userTypesData.map((ut: string, i: number) => ({ id: `usertype_remote_${i}`, label: ut }));
+            const localUserTypes = userTypesList.filter(lut => !userTypesData.includes(lut.label));
+            setUserTypesList([...remoteUserTypes, ...localUserTypes]);
+          }
+        }
+      } catch (err) {
+        console.warn('Could not fetch user types from backend:', err);
+      }
+    };
+    fetchGradesAndUserTypes();
+  }, []);
+
   // States for adding new items in the Configure panel
   const [newUserTypeId, setNewUserTypeId] = useState('');
   const [newUserTypeLabel, setNewUserTypeLabel] = useState('');
