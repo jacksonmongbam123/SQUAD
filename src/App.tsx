@@ -78,10 +78,7 @@ export default function App() {
 
   const [gradesList, setGradesList] = useState<{ id: string, grade: string }[]>(() => {
     const saved = localStorage.getItem('squad_grades');
-    return saved ? JSON.parse(saved) : [
-      { id: 'grade_1', grade: 'Grade 10' },
-      { id: 'grade_2', grade: 'Grade 11' }
-    ];
+    return saved ? JSON.parse(saved) : [];
   });
 
   // Server state parameters

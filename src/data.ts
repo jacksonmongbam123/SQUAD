@@ -1,11 +1,6 @@
 import { SquadUser } from './types';
 
-export const USER_TYPES = [
-  { id: 'student', label: 'Student' },
-  { id: 'instructor', label: 'Teacher / Instructor' },
-  { id: 'administrator', label: 'Administrator' },
-  { id: 'parent', label: 'Parent / Guardian' }
-];
+export const USER_TYPES: { id: string; label: string }[] = [];
 
 export const ACCESS_LEVELS = [
   { id: 1, label: 'Level 1' },
@@ -16,7 +11,7 @@ export const ACCESS_LEVELS = [
   { id: 6, label: 'Level 6' }
 ];
 
-export const TITLES = ['Mr', 'Mrs', 'Ms', 'Dr', 'Rev'];
+export const TITLES: string[] = [];
 
 export const SEXES = [
   { id: 'male', label: 'Male' },
