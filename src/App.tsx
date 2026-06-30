@@ -394,18 +394,39 @@ export default function App() {
     setAccessLevelsList(accessLevelsList.filter(al => al.id !== id));
   };
 
-  const handleAddTitle = (e: React.FormEvent) => {
+  const handleAddTitle = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim()) return;
     const cleanTitle = newTitle.trim();
-    if (titlesList.includes(cleanTitle)) {
+    if (titlesList.includes(cleanTitle) || remoteTitlesList.includes(cleanTitle)) {
       alert('Title already exists');
       return;
     }
-    setTitlesList([...titlesList, cleanTitle]);
-    setNewTitle('');
-    setSuccessToast(`Added Title: ${cleanTitle}`);
-    setTimeout(() => setSuccessToast(null), 3000);
+
+    try {
+      const response = await fetch('https://abms-lkw9.onrender.com/df/title/add', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ title: cleanTitle })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setTitlesList([...titlesList, cleanTitle]);
+        setRemoteTitlesList([...remoteTitlesList, cleanTitle]);
+        setNewTitle('');
+        setSuccessToast(`Added Title: ${cleanTitle}`);
+        setTimeout(() => setSuccessToast(null), 3000);
+      } else {
+        const error = await response.json();
+        alert(error.message || error.error || 'Failed to add title');
+      }
+    } catch (err) {
+      console.error('Error adding title:', err);
+      alert('Error connecting to backend');
+    }
   };
 
   const handleDeleteTitle = async (title: string) => {
@@ -427,13 +448,14 @@ export default function App() {
         setTitlesList(titlesList.filter(t => t !== title));
         setRemoteTitlesList(remoteTitlesList.filter(t => t !== title));
         setSuccessToast(`Deleted Title: ${title}`);
+        setTimeout(() => setSuccessToast(null), 3000);
       } else {
         const error = await response.json();
-        alert(error.error || 'Failed to delete title from database');
+        alert(error.message || error.error || 'Failed to delete title');
       }
     } catch (err) {
       console.error('Error deleting title:', err);
-      alert('Error deleting title from database');
+      alert('Error connecting to backend');
     }
   };
 
