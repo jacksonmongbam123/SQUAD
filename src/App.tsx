@@ -698,9 +698,6 @@ export default function App() {
 
       const cleanId = 'inst_' + Date.now();
       let updated = [...institutionsList];
-      if (newInstIsActive === 'true') {
-        updated = updated.map(inst => ({ ...inst, is_active: 'false' }));
-      }
       setInstitutionsList([...updated, { id: cleanId, name, is_active: newInstIsActive }]);
       setNewInstName('');
       setNewInstIsActive('true');
@@ -720,9 +717,6 @@ export default function App() {
       // Still append locally so user data is retained
       const cleanId = 'inst_' + Date.now();
       let updated = [...institutionsList];
-      if (newInstIsActive === 'true') {
-        updated = updated.map(inst => ({ ...inst, is_active: 'false' }));
-      }
       setInstitutionsList([...updated, { id: cleanId, name, is_active: newInstIsActive }]);
       setNewInstName('');
       setNewInstIsActive('true');
@@ -745,9 +739,8 @@ export default function App() {
     setInstitutionsList(institutionsList.map(inst => {
       if (inst.id === id) {
         return { ...inst, is_active: inst.is_active === 'true' ? 'false' : 'true' };
-      } else {
-        return { ...inst, is_active: 'false' };
       }
+      return inst;
     }));
   };
 
@@ -1550,10 +1543,11 @@ export default function App() {
                               onChange={e => setTitleId(e.target.value)}
                               className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-3 pr-10 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all appearance-none"
                             >
-                              {remoteTitlesList.map(title => (
-                                <option key={title} value={title}>{title}</option>
-                              ))}
-                              {titlesList.filter(t => !remoteTitlesList.includes(t)).map(title => (
+                              {remoteTitlesList.map(t => {
+                                const titleStr = typeof t === 'string' ? t : t.title;
+                                return <option key={titleStr} value={titleStr}>{titleStr}</option>;
+                              })}
+                              {titlesList.filter(t => !remoteTitlesList.some(rt => (typeof rt === 'string' ? rt : rt.title) === t)).map(title => (
                                 <option key={title} value={title}>{title} (local)</option>
                               ))}
                             </select>
