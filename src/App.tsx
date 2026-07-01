@@ -727,12 +727,36 @@ export default function App() {
     }
   };
 
-  const handleDeleteInstitution = (id: string) => {
+  const handleDeleteInstitution = async (id: string) => {
     if (institutionsList.length <= 1) {
       alert('Must keep at least one Institution!');
       return;
     }
-    setInstitutionsList(institutionsList.filter(inst => inst.id !== id));
+
+    const inst = institutionsList.find(i => i.id === id);
+    if (!inst) return;
+
+    try {
+      const response = await fetch('https://abms-lkw9.onrender.com/df/institute/delete-by-name', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name: inst.name })
+      });
+
+      if (response.ok) {
+        setInstitutionsList(institutionsList.filter(i => i.id !== id));
+        setSuccessToast(`Deleted Institution: ${inst.name}`);
+        setTimeout(() => setSuccessToast(null), 3000);
+      } else {
+        const error = await response.json();
+        alert(error.message || error.error || 'Failed to delete institution');
+      }
+    } catch (err) {
+      console.error('Error deleting institution:', err);
+      alert('Error connecting to backend');
+    }
   };
 
   const handleToggleInstitutionActive = (id: string) => {
