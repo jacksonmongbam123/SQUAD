@@ -149,7 +149,10 @@ export default function App() {
   const [selectedUserJson, setSelectedUserJson] = useState<string | null>(null);
 
   // Form Fields State (Precisely the 13 parameters)
-  const [userTypeId, setUserTypeId] = useState<string>('student');
+  const [userTypeId, setUserTypeId] = useState<string>(() => {
+    // Default to first user type label, or 'student' if empty
+    return userTypesList.length > 0 ? userTypesList[0].label : 'student';
+  });
   const [nic, setNic] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [email, setEmail] = useState<string>('');
@@ -1501,7 +1504,7 @@ export default function App() {
                               className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-3 pr-10 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all appearance-none"
                             >
                               {userTypesList.map(ut => (
-                                <option key={ut.id} value={ut.id}>{ut.label}</option>
+                                <option key={ut.id} value={ut.label}>{ut.label}</option>
                               ))}
                             </select>
                             <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
@@ -2204,9 +2207,16 @@ export default function App() {
                     <button
                       type="submit"
                       disabled={isPostingInst}
-                      className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-lg transition disabled:opacity-50"
+                      className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold py-2.5 px-4 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
                     >
-                      {isPostingInst ? 'Adding...' : 'Add Institution'}
+                      {isPostingInst ? (
+                        <span className="flex items-center justify-center gap-2">
+                          <RefreshCw className="h-4 w-4 animate-spin" />
+                          Adding...
+                        </span>
+                      ) : (
+                        'Add Institution'
+                      )}
                     </button>
                   </form>
                 </div>
@@ -2665,17 +2675,17 @@ export default function App() {
                               <button
                                 type="submit"
                                 disabled={isPostingInst}
-                                className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-3 py-1.5 text-xs font-semibold flex items-center gap-1.5 transition shadow-sm disabled:opacity-50"
+                                className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white rounded-lg px-4 py-2 text-xs font-semibold flex items-center gap-1.5 transition-all duration-200 shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
                               >
                                 {isPostingInst ? (
                                   <>
                                     <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                                    <span>Sending POST request...</span>
+                                    <span>Adding...</span>
                                   </>
                                 ) : (
                                   <>
                                     <Plus className="h-3.5 w-3.5" />
-                                    <span>Add & Post Institution</span>
+                                    <span>Add Institution</span>
                                   </>
                                 )}
                               </button>
