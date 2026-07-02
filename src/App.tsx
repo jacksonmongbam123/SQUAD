@@ -78,6 +78,12 @@ export default function App() {
     return saved ? JSON.parse(saved) : [];
   });
 
+  const [sectionsList, setSectionsList] = useState<string[]>(() => {
+    const saved = localStorage.getItem('squad_sections');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [remoteSectionsList, setRemoteSectionsList] = useState<string[]>([]);
+
   // Server state parameters
   const [serverVersion, setServerVersion] = useState<string>(() => {
     return localStorage.getItem('squad_server_version') || 'v1.0';
@@ -121,6 +127,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('squad_grades', JSON.stringify(gradesList));
   }, [gradesList]);
+
+  useEffect(() => {
+    localStorage.setItem('squad_sections', JSON.stringify(sectionsList));
+  }, [sectionsList]);
 
   useEffect(() => {
     localStorage.setItem('squad_server_version', serverVersion);
@@ -359,6 +369,7 @@ export default function App() {
 
   // Grade remote API synchronization states
   const [newGradeName, setNewGradeName] = useState('');
+  const [newSectionName, setNewSectionName] = useState('');
   const [isPostingGrade, setIsPostingGrade] = useState(false);
   const [gradePostLogs, setGradePostLogs] = useState<string[]>([]);
   const [gradePostStatus, setGradePostStatus] = useState<'idle' | 'success' | 'error'>('idle');
@@ -1233,7 +1244,73 @@ export default function App() {
 
   const activeInstitution = institutionsList.find(inst => inst.is_active === 'true') || institutionsList[0];
 
-  return (
+
+  const handleAddSection = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newSectionName.trim()) return;
+    const cleanSection = newSectionName.trim();
+    if (sectionsList.includes(cleanSection) || remoteSectionsList.includes(cleanSection)) {
+      alert('Section already exists');
+      return;
+    }
+
+    try {
+      const response = await fetch('https://abms-lkw9.onrender.com/df/section/add', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ section: cleanSection })
+      });
+
+      if (response.ok) {
+        setSectionsList([...sectionsList, cleanSection]);
+        setRemoteSectionsList([...remoteSectionsList, cleanSection]);
+        setNewSectionName('');
+        setSuccessToast(`Added Section: ${cleanSection}`);
+        setTimeout(() => setSuccessToast(null), 3000);
+      } else {
+        const error = await response.json();
+        alert(error.message || error.error || 'Failed to add section');
+      }
+    } catch (err) {
+      console.error('Error adding section:', err);
+      alert('Error connecting to backend');
+    }
+  };
+
+  const handleDeleteSection = async (section: string) => {
+    if (sectionsList.length <= 1 && remoteSectionsList.length <= 1) {
+      alert('Must keep at least one Section!');
+      return;
+    }
+
+    try {
+      const response = await fetch('https://abms-lkw9.onrender.com/df/section/delete-by-name', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ section })
+      });
+
+      if (response.ok) {
+        setSectionsList(sectionsList.filter(s => s !== section));
+        setRemoteSectionsList(remoteSectionsList.filter(s => s !== section));
+        setSuccessToast(`Deleted Section: ${section}`);
+        setTimeout(() => setSuccessToast(null), 3000);
+      } else {
+        const error = await response.json();
+        alert(error.message || error.error || 'Failed to delete section');
+      }
+    } catch (err) {
+      console.error('Error deleting section:', err);
+      alert('Error connecting to backend');
+    }
+  };
+
+
+    return (
     <div className="min-h-screen bg-slate-50 text-slate-800 flex font-sans antialiased">
 
       {/* ABMS Login Modal — shown when delete requires authentication */}
