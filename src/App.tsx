@@ -2857,7 +2857,6 @@ export default function App() {
                             </div>
                           </form>
                         </div>
-                      </div>
 
                         {/* G. Sections */}
                         <div className="border border-slate-100 rounded-xl p-4 space-y-3 bg-white hover:shadow-sm transition col-span-1 md:col-span-2">
