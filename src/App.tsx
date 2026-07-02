@@ -40,6 +40,7 @@ import { USER_TYPES, ACCESS_LEVELS, TITLES, SEXES, INITIAL_USERS } from './data'
 export default function App() {
   // Navigation State (Left Navigation Bar)
   const [activeTab, setActiveTab] = useState<'register' | 'directory' | 'gitsync' | 'configure' | 'institutions' | 'organization'>('register');
+  const [selectedOrgFilter, setSelectedOrgFilter] = useState<string>('');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
     const saved = localStorage.getItem('squad_sidebar_collapsed');
     return saved === 'true';
@@ -2445,7 +2446,7 @@ export default function App() {
                     </div>
                     <button
                       onClick={handleResetConfig}
-                      className="text-xs font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100/80 px-3 py-1.5 rounded-lg border border-rose-100 transition shrink-0 self-end sm:self-auto"
+                      className="text-xs font-semibold text-rose-600 hover:text-rose-700 bg-gradient-to-r from-rose-50 to-rose-100 hover:from-rose-100 hover:to-rose-200 px-4 py-2 rounded-lg border border-rose-200 transition shrink-0 shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 self-end sm:self-auto"
                     >
                       Reset to Defaults
                     </button>
@@ -2700,197 +2701,7 @@ export default function App() {
                           </form>
                         </div>
 
-                        {/* E. Institutions */}
-                        <div className="border border-slate-100 rounded-xl p-4 space-y-3 bg-white hover:shadow-sm transition col-span-1 md:col-span-2">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                              <Building className="h-4 w-4 text-indigo-600" />
-                              <span>Institution (institution config)</span>
-                            </span>
-                            <span className="text-[10px] font-mono text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded">
-                              {institutionsList.length} Options
-                            </span>
-                          </div>
-
-                          <p className="text-xs text-slate-500">
-                            Configure available institutions. Adding a new institution automatically executes a real-time HTTP POST request with the required body parameters to the remote API.
-                          </p>
-
-                          <div className="max-h-56 overflow-y-auto divide-y divide-slate-100 border border-slate-100 rounded-lg p-2 bg-slate-50/50">
-                            {institutionsList.map(inst => (
-                              <div key={inst.id} className="flex items-center justify-between py-2 text-xs">
-                                <div className="space-y-0.5">
-                                  <div className="font-semibold text-slate-800 flex items-center gap-2">
-                                    <span>{inst.name}</span>
-                                    {inst.is_active === 'true' && (
-                                      <span className="text-[8px] bg-emerald-500 text-white font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">
-                                        Active
-                                      </span>
-                                    )}
-                                  </div>
-                                  <div className="text-[10px] text-slate-400 font-mono flex items-center gap-3">
-                                    <span>ID: {inst.id}</span>
-                                    <span>is_active: "{inst.is_active}"</span>
-                                  </div>
-                                </div>
-                                
-                                <div className="flex items-center space-x-2">
-                                  <button
-                                    type="button"
-                                    onClick={() => handlePostToRemoteManual(inst.name, inst.is_active)}
-                                    disabled={isPostingInst}
-                                    className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[10px] font-bold px-2 py-1 rounded transition border border-indigo-200 disabled:opacity-50 flex items-center gap-1"
-                                    title="Post payload to https://abms-lkw9.onrender.com/df/institute/add"
-                                  >
-                                    <Send className="h-2.5 w-2.5" />
-                                    <span>POST</span>
-                                  </button>
-
-                                  <button
-                                    type="button"
-                                    onClick={() => handleToggleInstitutionActive(inst.id)}
-                                    className={`text-[10px] font-bold px-2 py-1 rounded transition border ${
-                                      inst.is_active === 'true'
-                                        ? 'bg-emerald-50 border-emerald-200 text-emerald-600'
-                                        : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
-                                    }`}
-                                    title="Toggle active status"
-                                  >
-                                    {inst.is_active === 'true' ? 'Deactivate' : 'Activate'}
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDeleteInstitution(inst.id)}
-                                    className="text-slate-400 hover:text-rose-600 p-1 rounded transition"
-                                    title="Delete option"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-
-                          {/* Live REST API Terminal Logs */}
-                          {instPostLogs.length > 0 && (
-                            <div className="border border-slate-900 rounded-xl overflow-hidden bg-slate-950 shadow-inner">
-                              <div className="bg-slate-900 px-3 py-2 flex items-center justify-between border-b border-slate-800 text-[10px] font-mono text-slate-400">
-                                <div className="flex items-center gap-2">
-                                  <div className="h-2 w-2 rounded-full bg-indigo-500 animate-pulse"></div>
-                                  <span className="font-bold text-slate-300">HTTP POST TERMINAL</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  {isPostingInst ? (
-                                    <span className="text-amber-400 flex items-center gap-1">
-                                      <RefreshCw className="h-3 w-3 animate-spin" />
-                                      <span>SENDING...</span>
-                                    </span>
-                                  ) : instPostStatus === 'success' ? (
-                                    <span className="text-emerald-400 font-bold">● SUCCESS (200 OK)</span>
-                                  ) : instPostStatus === 'error' ? (
-                                    <span className="text-rose-400 font-bold">● FAILED</span>
-                                  ) : (
-                                    <span>IDLE</span>
-                                  )}
-                                  <button 
-                                    type="button" 
-                                    onClick={() => setInstPostLogs([])} 
-                                    className="hover:text-slate-200 ml-2"
-                                  >
-                                    Clear Logs
-                                  </button>
-                                </div>
-                              </div>
-                              <div className="p-3 text-[10px] font-mono text-slate-300 max-h-48 overflow-y-auto space-y-1 select-all scrollbar-thin">
-                                {instPostLogs.map((log, i) => {
-                                  let color = 'text-slate-300';
-                                  if (log.includes('SUCCESS')) color = 'text-emerald-400 font-bold';
-                                  else if (log.includes('ERROR') || log.includes('failed')) color = 'text-rose-400 font-bold';
-                                  else if (log.includes('Payload:')) color = 'text-amber-300';
-                                  else if (log.includes('Response status code:')) color = 'text-cyan-300';
-                                  return (
-                                    <div key={i} className={`${color} whitespace-pre-wrap leading-relaxed`}>
-                                      {log}
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          )}
-
-                          <form onSubmit={handleAddInstitution} className="bg-slate-50 border border-slate-100 rounded-xl p-3 space-y-3">
-                            <div className="flex items-center justify-between">
-                              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-mono">
-                                Add New Institution Parameter & Send POST Request
-                              </p>
-                              <div className="text-[9px] text-indigo-600 bg-indigo-50 font-mono px-2 py-0.5 rounded font-semibold">
-                                POST to /df/institute/add
-                              </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                              <div>
-                                <label className="block text-[10px] font-bold text-slate-600 mb-1">
-                                  Institution Name (name)
-                                </label>
-                                <input
-                                  type="text"
-                                  required
-                                  placeholder="e.g. SQUAD Academy"
-                                  value={newInstName}
-                                  onChange={e => setNewInstName(e.target.value)}
-                                  className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-[10px] font-bold text-slate-600 mb-1">
-                                  Active State (is_active)
-                                </label>
-                                <select
-                                  value={newInstIsActive}
-                                  onChange={e => setNewInstIsActive(e.target.value)}
-                                  className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                                >
-                                  <option value="true">"true" (Active)</option>
-                                  <option value="false">"false" (Inactive)</option>
-                                </select>
-                              </div>
-                            </div>
-
-                            <div className="bg-slate-900 text-slate-300 rounded-lg p-3 text-[10px] font-mono relative">
-                              <span className="absolute top-2 right-2 text-[8px] font-bold text-slate-500 uppercase tracking-widest bg-slate-800 px-1.5 py-0.5 rounded">
-                                SCHEMA BODY PARAMETER
-                              </span>
-                              <pre className="text-emerald-400">
-{`{
-  "name": "${newInstName || 'Your Institute Name'}",
-  "is_active": "${newInstIsActive}"
-}`}
-                              </pre>
-                            </div>
-
-                            <div className="flex justify-end pt-1">
-                              <button
-                                type="submit"
-                                disabled={isPostingInst}
-                                className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white rounded-lg px-4 py-2 text-xs font-semibold flex items-center gap-1.5 transition-all duration-200 shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                              >
-                                {isPostingInst ? (
-                                  <>
-                                    <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                                    <span>Adding...</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <Plus className="h-3.5 w-3.5" />
-                                    <span>Add Institution</span>
-                                  </>
-                                )}
-                              </button>
-                            </div>
-                          </form>
-                        </div>
-
+                        
                         {/* F. Grade */}
                         <div className="border border-slate-100 rounded-xl p-4 space-y-3 bg-white hover:shadow-sm transition col-span-1 md:col-span-2">
                           <div className="flex items-center justify-between">
@@ -3047,6 +2858,75 @@ export default function App() {
                           </form>
                         </div>
                       </div>
+
+                        {/* G. Sections */}
+                        <div className="border border-slate-100 rounded-xl p-4 space-y-3 bg-white hover:shadow-sm transition col-span-1 md:col-span-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                              <Layers className="h-4 w-4 text-emerald-600" />
+                              <span>Section Configuration (section config)</span>
+                            </span>
+                            <span className="text-[10px] font-mono text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded">
+                              {sectionsList.length} Options
+                            </span>
+                          </div>
+
+                          <p className="text-xs text-slate-500">
+                            Configure available sections (A, B, C, etc.). Adding a new section automatically executes a real-time HTTP POST request.
+                          </p>
+
+                          <div className="max-h-56 overflow-y-auto divide-y divide-slate-100 border border-slate-100 rounded-lg p-2 bg-slate-50/50">
+                            {sectionsList.map((section, idx) => (
+                              <div key={idx} className="flex items-center justify-between py-2 text-xs">
+                                <div className="font-semibold text-slate-800">{section}</div>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteSection(section)}
+                                  className="text-slate-400 hover:text-rose-600 p-1 rounded transition"
+                                  title="Delete section"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+
+                          <form onSubmit={handleAddSection} className="bg-slate-50 border border-slate-100 rounded-xl p-3 space-y-3">
+                            <div className="flex items-center justify-between">
+                              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-mono">
+                                Add New Section Parameter & Send POST Request
+                              </p>
+                              <div className="text-[9px] text-emerald-600 bg-emerald-50 font-mono px-2 py-0.5 rounded font-semibold">
+                                POST to /df/section/add
+                              </div>
+                            </div>
+
+                            <div>
+                              <label className="block text-[10px] font-bold text-slate-600 mb-1">
+                                Section Name (section)
+                              </label>
+                              <input
+                                type="text"
+                                required
+                                placeholder="e.g. A, B, C, etc."
+                                value={newSectionName}
+                                onChange={e => setNewSectionName(e.target.value)}
+                                className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                              />
+                            </div>
+
+                            <div className="flex justify-end pt-1">
+                              <button
+                                type="submit"
+                                className="bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white rounded-lg px-4 py-2 text-xs font-semibold flex items-center gap-1.5 transition-all duration-200 shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+                              >
+                                <Plus className="h-3.5 w-3.5" />
+                                <span>Add Section</span>
+                              </button>
+                            </div>
+                          </form>
+                        </div>
+
                     </div>
                   </div>
                 </div>
