@@ -39,7 +39,7 @@ import { USER_TYPES, ACCESS_LEVELS, TITLES, SEXES, INITIAL_USERS } from './data'
 
 export default function App() {
   // Navigation State (Left Navigation Bar)
-  const [activeTab, setActiveTab] = useState<'register' | 'directory' | 'gitsync' | 'configure' | 'institutions'>('register');
+  const [activeTab, setActiveTab] = useState<'register' | 'directory' | 'gitsync' | 'configure' | 'institutions' | 'organization'>('register');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
     const saved = localStorage.getItem('squad_sidebar_collapsed');
     return saved === 'true';
@@ -360,6 +360,16 @@ export default function App() {
   const [newSexLabel, setNewSexLabel] = useState('');
   const [newInstName, setNewInstName] = useState('');
   const [newInstIsActive, setNewInstIsActive] = useState('true');
+
+  // Organization (m_organization) states
+  const [organizationsList, setOrganizationsList] = useState<any[]>([]);
+  const [newOrgName, setNewOrgName] = useState('');
+  const [newOrgLine1, setNewOrgLine1] = useState('');
+  const [newOrgLine2, setNewOrgLine2] = useState('');
+  const [newOrgLine3, setNewOrgLine3] = useState('');
+  const [newOrgCity, setNewOrgCity] = useState('');
+  const [newOrgPostcode, setNewOrgPostcode] = useState('');
+  const [newOrgKey, setNewOrgKey] = useState('');
 
   // Institution remote API synchronization states
   const [isPostingInst, setIsPostingInst] = useState(false);
@@ -920,6 +930,102 @@ export default function App() {
     }
   };
 
+  // Organization (m_organization) handlers
+  const handleAddOrganization = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newOrgName.trim()) {
+      alert('Organization name is required');
+      return;
+    }
+
+    try {
+      const response = await fetch('https://abms-lkw9.onrender.com/m/organization/add', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: newOrgName.trim(),
+          line1: newOrgLine1.trim(),
+          line2: newOrgLine2.trim(),
+          line3: newOrgLine3.trim(),
+          city: newOrgCity.trim(),
+          postcode: newOrgPostcode.trim(),
+          key: newOrgKey.trim()
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setOrganizationsList([...organizationsList, data.createdParent || data]);
+        setNewOrgName('');
+        setNewOrgLine1('');
+        setNewOrgLine2('');
+        setNewOrgLine3('');
+        setNewOrgCity('');
+        setNewOrgPostcode('');
+        setNewOrgKey('');
+        setSuccessToast('Organization added successfully!');
+        setTimeout(() => setSuccessToast(null), 3000);
+      } else {
+        const error = await response.json();
+        alert(error.message || error.error || 'Failed to add organization');
+      }
+    } catch (err) {
+      console.error('Error adding organization:', err);
+      alert('Error connecting to backend');
+    }
+  };
+
+  const handleDeleteOrganization = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this organization?')) return;
+
+    try {
+      const response = await fetch(`https://abms-lkw9.onrender.com/m/organization/delete/${id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      if (response.ok) {
+        setOrganizationsList(organizationsList.filter(org => org._id !== id));
+        setSuccessToast('Organization deleted successfully!');
+        setTimeout(() => setSuccessToast(null), 3000);
+      } else {
+        const error = await response.json();
+        alert(error.message || error.error || 'Failed to delete organization');
+      }
+    } catch (err) {
+      console.error('Error deleting organization:', err);
+      alert('Error connecting to backend');
+    }
+  };
+
+  // Fetch organizations on mount
+  useEffect(() => {
+    const fetchOrganizations = async () => {
+      try {
+        const res = await fetch('https://abms-lkw9.onrender.com/m/organization/retrieve', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            setOrganizationsList(data);
+          }
+        }
+      } catch (err) {
+        console.warn('Could not fetch organizations:', err);
+      }
+    };
+    fetchOrganizations();
+  }, []);
+
   const handleResetConfig = () => {
     if (confirm('Are you sure you want to reset SQUAD Portal configuration to factory defaults?')) {
       setUserTypesList(USER_TYPES);
@@ -1469,6 +1575,21 @@ export default function App() {
           >
             <Building className="h-4 w-4 shrink-0" />
             {!isSidebarCollapsed && <span>Institutions</span>}
+          </button>
+
+          <button
+            onClick={() => setActiveTab('organization')}
+            className={`w-full flex items-center rounded-lg text-xs font-semibold transition-all ${
+              isSidebarCollapsed ? 'justify-center p-2.5' : 'space-x-3 px-3 py-2'
+            } ${
+              activeTab === 'organization'
+                ? 'bg-orange-50 text-orange-700 shadow-sm border border-orange-100/50'
+                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-transparent'
+            }`}
+            title={isSidebarCollapsed ? "Organization Details" : ""}
+          >
+            <Building className="h-4 w-4 shrink-0" />
+            {!isSidebarCollapsed && <span>Organization</span>}
           </button>
         </nav>
 
@@ -2926,6 +3047,186 @@ export default function App() {
                           </form>
                         </div>
                       </div>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {activeTab === 'organization' && (
+              <motion.div
+                key="organization-view"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.15 }}
+                className="space-y-6"
+              >
+                {/* Organizations List */}
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                  <div className="px-6 py-5 border-b border-slate-100 bg-orange-50/50 flex items-center justify-between">
+                    <div>
+                      <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                        🏢 Organization Management
+                      </h2>
+                      <p className="text-xs text-slate-500 mt-1">Manage institution organization details (m_organization)</p>
+                    </div>
+                    <span className="text-sm font-semibold bg-orange-100 text-orange-800 px-3 py-1 rounded-lg">
+                      {organizationsList.length} Organizations
+                    </span>
+                  </div>
+
+                  <div className="p-6 space-y-6">
+                    {/* Organizations List */}
+                    {organizationsList.length > 0 ? (
+                      <div className="space-y-3">
+                        <h3 className="font-semibold text-slate-900">Existing Organizations</h3>
+                        <div className="grid gap-4">
+                          {organizationsList.map((org: any) => (
+                            <div key={org._id} className="border border-slate-200 rounded-lg p-4 hover:shadow-md transition">
+                              <div className="flex justify-between items-start mb-3">
+                                <div>
+                                  <h4 className="font-bold text-slate-900">{org.name}</h4>
+                                  <p className="text-xs text-slate-500 mt-1 font-mono">{org._id}</p>
+                                </div>
+                                <button
+                                  onClick={() => handleDeleteOrganization(org._id)}
+                                  className="text-red-600 hover:text-red-800 p-1 rounded transition"
+                                  title="Delete organization"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </div>
+                              <div className="grid grid-cols-2 gap-3 text-xs">
+                                <div>
+                                  <p className="text-slate-500 font-semibold">Street:</p>
+                                  <p className="text-slate-700">{org.line1 || "N/A"}</p>
+                                </div>
+                                <div>
+                                  <p className="text-slate-500 font-semibold">City:</p>
+                                  <p className="text-slate-700">{org.city || "N/A"}</p>
+                                </div>
+                                <div className="col-span-2">
+                                  <p className="text-slate-500 font-semibold">Address:</p>
+                                  <p className="text-slate-700">
+                                    {[org.line1, org.line2, org.line3, org.postcode].filter(Boolean).join(", ") || "N/A"}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-slate-500">
+                        <Building className="h-12 w-12 mx-auto text-slate-300 mb-2" />
+                        <p>No organizations created yet</p>
+                      </div>
+                    )}
+
+                    {/* Add Organization Form */}
+                    <div className="border-t border-slate-200 pt-6">
+                      <h3 className="font-semibold text-slate-900 mb-4">Add New Organization</h3>
+                      <form onSubmit={handleAddOrganization} className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">Organization Name *</label>
+                            <input
+                              type="text"
+                              required
+                              placeholder="e.g., ABMS Academy"
+                              value={newOrgName}
+                              onChange={e => setNewOrgName(e.target.value)}
+                              className="w-full border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">Organization Key</label>
+                            <input
+                              type="text"
+                              placeholder="e.g., school_key_01"
+                              value={newOrgKey}
+                              onChange={e => setNewOrgKey(e.target.value)}
+                              className="w-full border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                            />
+                          </div>
+                          <div className="md:col-span-2">
+                            <label className="block text-sm font-medium text-slate-700 mb-2">Street Address (Line 1)</label>
+                            <input
+                              type="text"
+                              placeholder="e.g., 123 Main Street"
+                              value={newOrgLine1}
+                              onChange={e => setNewOrgLine1(e.target.value)}
+                              className="w-full border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">Building/Suite (Line 2)</label>
+                            <input
+                              type="text"
+                              placeholder="e.g., Block A"
+                              value={newOrgLine2}
+                              onChange={e => setNewOrgLine2(e.target.value)}
+                              className="w-full border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">Additional Info (Line 3)</label>
+                            <input
+                              type="text"
+                              placeholder="e.g., Floor 1"
+                              value={newOrgLine3}
+                              onChange={e => setNewOrgLine3(e.target.value)}
+                              className="w-full border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">City</label>
+                            <input
+                              type="text"
+                              placeholder="e.g., New York"
+                              value={newOrgCity}
+                              onChange={e => setNewOrgCity(e.target.value)}
+                              className="w-full border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">Postal Code</label>
+                            <input
+                              type="text"
+                              placeholder="e.g., 10001"
+                              value={newOrgPostcode}
+                              onChange={e => setNewOrgPostcode(e.target.value)}
+                              className="w-full border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="flex gap-2 justify-end pt-4">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setNewOrgName('');
+                              setNewOrgLine1('');
+                              setNewOrgLine2('');
+                              setNewOrgLine3('');
+                              setNewOrgCity('');
+                              setNewOrgPostcode('');
+                              setNewOrgKey('');
+                            }}
+                            className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-semibold text-sm"
+                          >
+                            Clear Form
+                          </button>
+                          <button
+                            type="submit"
+                            className="px-6 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition font-semibold text-sm flex items-center gap-2"
+                          >
+                            <Plus className="h-4 w-4" />
+                            Add Organization
+                          </button>
+                        </div>
+                      </form>
                     </div>
                   </div>
                 </div>
