@@ -2857,6 +2857,7 @@ export default function App() {
                             </div>
                           </form>
                         </div>
+                      </div>
 
                         {/* G. Sections */}
                         <div className="border border-slate-100 rounded-xl p-4 space-y-3 bg-white hover:shadow-sm transition col-span-1 md:col-span-2">
@@ -2927,7 +2928,13 @@ export default function App() {
                         </div>
                       </div>
 
-                        {/* G. Sections */}
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {activeTab === 'organization' && (
               <motion.div
                 key="organization-view"
                 initial={{ opacity: 0, y: 10 }}
